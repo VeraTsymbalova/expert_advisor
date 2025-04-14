@@ -1,0 +1,9 @@
+pandas
+numpy
+scikit-learn
+ta
+gymnasium
+stable-baselines3
+optuna
+matplotlib
+tensorboard
