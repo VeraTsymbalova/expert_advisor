@@ -14,3 +14,8 @@
 Бэктестинг торговых стратегий
 
 Визуализация результатов и расчёт метрик эффективности
+
+Запуск проекта: 
+1. cd C:\Users\vera-\expert_advisor
+2. .\venv\Scripts\activate
+3. python main.py
