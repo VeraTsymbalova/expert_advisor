@@ -1,5 +1,6 @@
 pandas
 numpy
+MetaTrader5
 scikit-learn
 ta
 gymnasium
