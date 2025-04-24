@@ -3,30 +3,38 @@ from gymnasium import spaces
 import numpy as np
 
 class ForexTradingEnv(gym.Env):
-    def __init__(self, df, episode_length=None):
+    """
+    A custom OpenAI Gym environment for Forex trading that allows multiple positions and enforces specific closing rules,
+    with margin and leverage considerations.
+    """
+    def __init__(self, df):
         super(ForexTradingEnv, self).__init__()
 
         self.long_positions_history = []
         self.short_positions_history = []
 
-        self.df = df.reset_index(drop=True)
+        self.df = df.reset_index(drop=True)  # Ensure the DataFrame index is sequential
         self.total_steps = len(self.df)
-        self.episode_length = episode_length
 
+        # Initial account balance (Cent Account with $1,000 USD)
         self.initial_balance = 1000
         self.balance = self.initial_balance
         self.equity = self.initial_balance
 
-        self.leverage = 200
-        self.margin_call_level = 100
-        self.stop_out_level = 50
+        # Leverage and margin settings
+        self.leverage = 200  # Leverage ratio
+        self.margin_call_level = 100  # Margin Call Level (%)
+        self.stop_out_level = 50  # Stop Out Level (%)
 
+        # Margin variables
         self.used_margin = 0
         self.free_margin = self.balance - self.used_margin
-        self.margin_level = np.inf
+        self.margin_level = np.inf  # Initially infinite when no positions are open
 
-        self.open_positions = []
+        # Positions will be stored in a list
+        self.open_positions = []  # Each position is a dictionary with 'type', 'entry_price', and 'size'
 
+        # For tracking history
         self.balance_history = []
         self.equity_history = []
         self.position_history = []
@@ -34,20 +42,25 @@ class ForexTradingEnv(gym.Env):
         self.free_margin_history = []
         self.margin_level_history = []
 
+        # Exclude unscaled price columns from observation
         price_columns = ['Unscaled_Open', 'Unscaled_High', 'Unscaled_Low', 'Unscaled_Close', 'Spread', 'Unscaled_Spread']
         self.numeric_columns = [col for col in self.df.select_dtypes(include=[np.number]).columns.tolist() if col not in price_columns]
 
-        # Количество признаков = числовые признаки + 3 маржи + 1 кол-во открытых позиций
-        num_features = len(self.numeric_columns) + 4
-
+        # Define action and observation space
+        # Action space: action_type
+        # action_type: 0 - Hold, 1 - Buy, 2 - Sell, 3 - Close Positions
         self.action_space = spaces.Discrete(4)
+
+        # Observation space: all numerical features except unscaled prices, plus margin variables
+        num_features = len(self.numeric_columns) + 3  # Additional margin variables
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_features,), dtype=np.float32)
 
+        # Initialize trade log
         self.trade_log = []
 
     def reset(self, *, seed=None, options=None):
         """
-        Сброс состояния среды в начальное
+        Reset the state of the environment to an initial state.
         """
         super().reset(seed=seed)
         self.current_step = 0
@@ -55,12 +68,12 @@ class ForexTradingEnv(gym.Env):
         self.equity = self.initial_balance
         self.open_positions = []
 
-        # Сброс переменных маржи
+        # Reset margin variables
         self.used_margin = 0
         self.free_margin = self.balance - self.used_margin
         self.margin_level = np.inf
 
-        # Сброс истории
+        # Reset history
         self.balance_history = [self.balance]
         self.equity_history = [self.equity]
         self.position_history = [len(self.open_positions)]
@@ -68,45 +81,44 @@ class ForexTradingEnv(gym.Env):
         self.free_margin_history = [self.free_margin]
         self.margin_level_history = [self.margin_level]
 
-        # Инициализация истории длинных и коротких позиций
+        # Initialize long and short positions history
         num_long_positions = 0
         num_short_positions = 0
 
         self.long_positions_history = [num_long_positions]
         self.short_positions_history = [num_short_positions]
 
-        # Сброс журнала сделок
+        # Reset trade log
         self.trade_log = []
 
         return self._next_observation(), {}
 
     def _next_observation(self):
         """
-        Получение наблюдения для текущего шага
+        Get the observation for the current step.
         """
-        # Извлечение текущей строки
+        # Extract the current row
         obs = self.df.loc[self.current_step, self.numeric_columns].values.astype(np.float32)
 
-        # Заменить NaN на нули для стабильности
+        # Replace any NaNs with zeros to ensure stability
         obs = np.nan_to_num(obs, nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Добавить переменные маржи к наблюдению
-        # Обработка бесконечного значения margin_level заменой на большое конечное
+        # Add margin variables to observation
+        # Handle infinite margin_level by capping it to a large finite value
         capped_margin_level = self.margin_level if np.isfinite(self.margin_level) else 1e6
         additional_obs = np.array([
             self.used_margin / self.initial_balance,
             self.free_margin / self.initial_balance,
-            capped_margin_level / 1000,  # To normalize
-            len(self.open_positions) / 200
+            capped_margin_level / 1000  # To normalize
         ], dtype=np.float32)
 
-        # Проверка NaN или бесконечностей в дополнительных наблюдениях
+        # Ensure no NaNs or Infs in additional_obs
         additional_obs = np.nan_to_num(additional_obs, nan=0.0, posinf=1e6 / 1000, neginf=0.0)
 
-        # Объединение маржинальной информации с наблюдением
+        # Concatenate the margin information to the observation
         obs = np.concatenate((obs, additional_obs))
 
-        # Финальная проверка на NaN в наблюдении
+        # Final check for NaNs in the observation
         if np.any(np.isnan(obs)):
             print(f"NaN detected in observation at step {self.current_step}")
             obs = np.nan_to_num(obs, nan=0.0, posinf=1e6 / 1000, neginf=0.0)
@@ -115,41 +127,41 @@ class ForexTradingEnv(gym.Env):
 
     def step(self, action):
         """
-        Выполнение одиного шага в среде
+        Execute one time step within the environment.
         """
         terminated = False
         truncated = False
 
-        # Сохранить предыдущую стоимость капитала для расчёта вознаграждения
+        # Store previous equity for reward calculation
         previous_equity = self.equity
 
-        # Использование немасштабированной цены закрытия для расчета прибыли
+        # Use unscaled close price for profit calculations
         current_price = self.df.loc[self.current_step, 'Unscaled_Close']
-        current_spread = self.df.loc[self.current_step, 'Unscaled_Spread'] * 0.00001  # Конвертация спреда в ценовые единицы
+        current_spread = self.df.loc[self.current_step, 'Unscaled_Spread'] * 0.00001  # Convert spread to price units
 
         total_realized_profit = 0
 
-        # Инициализация штрафа за неверные действия
+        # Initialize penalty for invalid actions
         penalty = 0
 
         # Process action
-        # Тип действия - целое число от 0 до 3
+        # action_type is an integer from 0 to 3
         action_type = action
 
-        # Использование фиксированного лота
+        # Use fixed lot size
         lot_size = 0.1  # Fixed lot size
         position_size = lot_size * 100000  # Convert lot size to units
 
         if action_type == 0:
             # Hold, do nothing
-            reward_penalty = -0.00001  # Small penalty for holding
+            reward_penalty = -0.001  # Small penalty for holding
         elif action_type == 1 or action_type == 2:
             # Buy or Sell
             if len(self.open_positions) < 200:
                 required_margin = position_size / self.leverage
 
                 if self.free_margin >= required_margin and position_size > 0:
-                    # Корректировка цены входа с учётом спреда
+                    # Adjust entry price for spread
                     if action_type == 1:  # Buy
                         adjusted_entry_price = current_price + current_spread / 2
                         position_type = 'long'
@@ -160,16 +172,14 @@ class ForexTradingEnv(gym.Env):
                     position = {
                         'type': position_type,
                         'entry_price': adjusted_entry_price,
-                        'size': position_size,
-                        'step_opened': self.current_step
+                        'size': position_size
                     }
-                    print(f"[STEP {self.current_step}] OPEN {position_type.upper()} @ {adjusted_entry_price:.5f} | Size: {position_size}")
-                    # Открытие позиции
+                    # Open position
                     self.open_positions.append(position)
-                    # Обновление маржи
+                    # Update margins
                     self.used_margin += required_margin
                     self.free_margin -= required_margin
-                    # Запись сделки
+                    # Record the trade
                     trade = {
                         'step': self.current_step,
                         'date': self.df.loc[self.current_step, 'Date'],
@@ -179,17 +189,17 @@ class ForexTradingEnv(gym.Env):
                     }
                     self.trade_log.append(trade)
                 else:
-                    # Недостаточно маржи или неправильный размер позиции
-                    penalty -= 0.1  # Наказание за неправильное действие
+                    # Not enough free margin or invalid position size
+                    penalty -= 10  # Penalize invalid action
             else:
-                # Слишком много открытых позиций
-                penalty -= 0.1  # Наказание за неправильное действие
-            reward_penalty = 0  # нет штрафов за совершение действий
+                # Too many open positions
+                penalty -= 10  # Penalize invalid action
+            reward_penalty = 0  # No penalty for taking action
         elif action_type == 3:
-            # Попытка закрытия всех позиций
+            # Attempt to close all positions
             positions_to_close = []
             for pos in self.open_positions:
-                # Корректировка цены выхода с учетом спреда
+                # Adjust exit price for spread
                 if pos['type'] == 'long':
                     exit_price = current_price - current_spread / 2
                     pnl = (exit_price - pos['entry_price']) * pos['size']
@@ -197,14 +207,14 @@ class ForexTradingEnv(gym.Env):
                     exit_price = current_price + current_spread / 2
                     pnl = (pos['entry_price'] - exit_price) * pos['size']
                 total_realized_profit += pnl
-                # Обновление баланса
+                # Update balance
                 self.balance += pnl
-                # Освобождение маржи
+                # Release margin
                 required_margin = pos['size'] / self.leverage
                 self.used_margin -= required_margin
                 self.free_margin += required_margin
                 positions_to_close.append(pos)
-                # Запись сделки
+                # Record the trade
                 trade = {
                     'step': self.current_step,
                     'date': self.df.loc[self.current_step, 'Date'],
@@ -216,15 +226,15 @@ class ForexTradingEnv(gym.Env):
                     'profit_loss': pnl
                 }
                 self.trade_log.append(trade)
-            # Удаление закрытых позиций
+            # Remove closed positions from open_positions
             for pos in positions_to_close:
                 self.open_positions.remove(pos)
-            reward_penalty = 0  # нет штрафов за совершение действий
+            reward_penalty = 0  # No penalty for taking action
 
-        # Расчёт нереализованной прибыли/убытка
+        # Calculate unrealized PnL
         unrealized_pnl = 0
         for pos in self.open_positions:
-            # Корректировка потенциальной цены выхода с учетом спреда
+            # Adjust potential exit price for spread
             if pos['type'] == 'long':
                 potential_exit_price = current_price - current_spread / 2
                 pnl = (potential_exit_price - pos['entry_price']) * pos['size']
@@ -233,26 +243,26 @@ class ForexTradingEnv(gym.Env):
                 pnl = (pos['entry_price'] - potential_exit_price) * pos['size']
             unrealized_pnl += pnl
 
-        # Обновление equity
+        # Update equity
         self.equity = self.balance + unrealized_pnl
 
-        # Обновление свободной маржи
+        # Update free margin
         self.free_margin = self.equity - self.used_margin
 
-        # Обновление уровня маржи с защитой от деления на ноль
+        # Update margin level, ensuring no division by zero
         if self.used_margin > 0:
             self.margin_level = (self.equity / self.used_margin) * 100
         else:
-            self.margin_level = 1e6  #
+            self.margin_level = 1e6  # Assign a large finite value instead of infinity
 
-        # Проверка на маржин-колл или стоп-аут
+        # Check for margin call / stop out
         if self.margin_level <= self.stop_out_level:
-            # Закрытие позиций до восстановления уровня маржи
+            # Close positions until margin level is above stop out level
             positions_to_close = []
-            # Сортировка позиций по прибыли/убытку
+            # Sort positions by PnL ascending (largest losses first)
             positions_with_pnl = []
             for pos in self.open_positions:
-                # Корректировка потенциальной цены выхода с учетом спреда
+                # Adjust potential exit price for spread
                 if pos['type'] == 'long':
                     exit_price = current_price - current_spread / 2
                     pnl = (exit_price - pos['entry_price']) * pos['size']
@@ -264,18 +274,18 @@ class ForexTradingEnv(gym.Env):
             positions_with_pnl.sort(key=lambda x: x['pnl'])
 
             for p in positions_with_pnl:
-                # Закрытие позиции
+                # Close position
                 pnl = p['pnl']
                 self.balance += pnl
                 total_realized_profit += pnl
 
-                # Маржа
+                # Release margin
                 required_margin = p['position']['size'] / self.leverage
                 self.used_margin -= required_margin
                 self.free_margin += required_margin
 
                 positions_to_close.append(p['position'])
-                # Запись сделки
+                # Record the trade
                 trade = {
                     'step': self.current_step,
                     'date': self.df.loc[self.current_step, 'Date'],
@@ -288,24 +298,24 @@ class ForexTradingEnv(gym.Env):
                 }
                 self.trade_log.append(trade)
 
-                # Пересчет equity и маржи
-                unrealized_pnl -= pnl  # вычитание PnL закрытой позиции
+                # Recalculate equity and margin level
+                unrealized_pnl -= pnl  # Subtract the PnL of the closed position
                 self.equity = self.balance + unrealized_pnl
 
                 if self.used_margin > 0:
                     self.margin_level = (self.equity / self.used_margin) * 100
                 else:
-                    self.margin_level = 1e6  #
+                    self.margin_level = 1e6  # Assign a large finite value instead of infinity
 
                 if self.margin_level > self.stop_out_level:
                     break  # Margin level is acceptable
 
-            # Удаление закрытых позиций
+            # Remove closed positions from open_positions
             for pos in positions_to_close:
                 if pos in self.open_positions:
                     self.open_positions.remove(pos)
 
-        # Добавление в историю
+        # Append history
         self.balance_history.append(self.balance)
         self.equity_history.append(self.equity)
         self.position_history.append(len(self.open_positions))
@@ -319,20 +329,16 @@ class ForexTradingEnv(gym.Env):
         self.long_positions_history.append(num_long_positions)
         self.short_positions_history.append(num_short_positions)
 
-        # переход к следующему шагу
+        # Move to the next step
         self.current_step += 1
 
-        # Проверка завершения эпизода
-        if self.episode_length is not None:
-            if self.current_step >= self.episode_length:
-                terminated = True
-        else:
-            if self.current_step >= self.total_steps - 1:
-                terminated = True
+        # Check if the episode is over
+        if self.current_step >= self.total_steps - 1:
+            terminated = True
 
         observation = self._next_observation()
 
-        # Расчёт вознаграждения на основе изменения equity и штрафа за просадку
+        # Calculate reward based on equity change and drawdown penalty
         equity_change = (self.equity - previous_equity) / self.initial_balance
 
         # Calculate drawdown
@@ -341,16 +347,16 @@ class ForexTradingEnv(gym.Env):
         drawdown_penalty_factor = 0.1  # Adjust as needed
         drawdown_penalty = (drawdown * drawdown_penalty_factor) / self.initial_balance
 
-        # Расчёт просадки
-        reward = equity_change - drawdown_penalty + penalty + reward_penalty + (total_realized_profit / self.initial_balance)
+        # Calculate reward
+        reward = equity_change - drawdown_penalty + penalty + reward_penalty
 
-        # Проверка на NaN и бесконечности
+        # Final checks to prevent NaNs
         if not np.isfinite(self.equity):
             print(f"Non-finite equity detected at step {self.current_step}")
-            self.equity = self.balance  #
+            self.equity = self.balance  # Reset equity to balance
 
         if not np.isfinite(reward):
             print(f"Non-finite reward detected at step {self.current_step}")
-            reward = -1  #
+            reward = -1  # Assign a penalty
 
         return observation, reward, terminated, truncated, {}
