@@ -19,7 +19,8 @@
 1. Клонирование репозитория: git clone https://github.com/VeraTsymbalova/expert_advisor/
 2. Переход в папку проекта: cd expert_advisor
 3. Установка виртуального окружения (windows): python -m venv venv и .\venv\Scripts\activate 
-4. Запуск проекта: python main.py
+4. Установка необходимых библиотек pip install -r requirements.txt
+5. Запуск проекта: python main.py
 
 # Описание блоков проекта:
  - import_data.py - предназначен для загрузки исторических данных с платформы MetaTrader 5 (MT5) по валютной паре EURUSD и их сохранения в CSV-файл;
