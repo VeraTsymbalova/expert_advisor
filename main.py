@@ -1,47 +1,72 @@
-from preprocess_data import preprocess_data
+import os
+import pickle
+import pandas as pd
+
+from import_data import df_final as raw_data
 from add_trend_indicators import add_trend_indicators
-import import_data  # запускается автоматически при импорте
-import train_evaluate
-import hyperparameter_optimization
-import visualize_results
+from preprocess_data import preprocess_data
+import register_env
+from train import WrappedVAC
+from ding.entry import serial_pipeline
+from ppo_forex_config import ppo_forex_config
+from ppo_forex_create_config import ppo_forex_create_config
+import torch
+import torch.nn as nn
+from export_to_onnx import ExportableActor
+from ding.envs import DingEnvWrapper
+from ding.utils import ENV_REGISTRY
 
-from environment import ForexTradingEnv
+def prepare_data():
+    # 1. Сохраняем сырые данные
+    raw_data.to_csv('EURUSD-H1.csv', index=False, sep='\t')
 
-from stable_baselines3 import PPO
+    # 2. Добавляем индикаторы
+    df = pd.read_csv('EURUSD-H1.csv', delimiter='\t')
+    df = add_trend_indicators(df)
+    df.to_csv('EURUSD-H1-with-indicators.csv', index=False, sep='\t')
 
-def main():
-    print("\n=== Шаг 1: Импорт и сохранение данных ===")
-    # import_data запускается при импорте и сохраняет EURUSD-H1.csv
+    # 3. Препроцессинг и разделение данных
+    df_train, df_test, df_val = preprocess_data('EURUSD-H1-with-indicators.csv')
 
-    print("\n=== Шаг 2: Предобработка и добавление индикаторов ===")
-    df_train, df_test, df_val = preprocess_data("EURUSD-H1.csv")
+    # 4. Сохраняем тренировочные данные для среды
+    with open('train_data.pkl', 'wb') as f:
+        pickle.dump(df_train, f)
 
-    df_train = add_trend_indicators(df_train)
-    df_test = add_trend_indicators(df_test)
-    df_val = add_trend_indicators(df_val)
+    print("Данные подготовлены")
 
-    print(f"Train: {df_train.shape}, Test: {df_test.shape}, Validation: {df_val.shape}")
+def train_model():
+    # Обучение модели
+    trained_policy = serial_pipeline(
+        [ppo_forex_config, ppo_forex_create_config],
+        seed=0,
+    )
+    print("Обучение завершено")
 
-    df_train.to_csv("data_train.csv", index=False)
-    df_test.to_csv("data_test.csv", index=False)
-    df_val.to_csv("data_val.csv", index=False)
-    print("Данные сохранены.")
+    return trained_policy
 
-    print("\n=== Шаг 3: Оптимизация гиперпараметров ===")
-    hyperparameter_optimization.objective  # просто для явного указания использования
-    if __name__ == '__main__':
-        hyperparameter_optimization.study = hyperparameter_optimization.optuna.create_study(direction='maximize')
-        hyperparameter_optimization.study.optimize(hyperparameter_optimization.objective, n_trials=100)
+def export_model(trained_policy):
+    # Экспорт модели в ONNX
+    vac_model = trained_policy._model
+    exportable_model = ExportableActor(vac_model)
+    exportable_model.eval()
 
-    print("\n=== Шаг 4: Обучение модели ===")
-    env_train = ForexTradingEnv(df_train)
-    env_test = ForexTradingEnv(df_test)
+    obs_shape = ppo_forex_config.policy.model.obs_shape
+    dummy_input = torch.randn(1, obs_shape)
 
-    model = train_evaluate.train_model(env_train)
-    log = train_evaluate.evaluate_model(model, env_test)
+    onnx_path = 'ppo_forex_model.onnx'
+    torch.onnx.export(
+        exportable_model,
+        dummy_input,
+        onnx_path,
+        input_names=['input'],
+        output_names=['output'],
+        dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}},
+        opset_version=11
+    )
 
-    print("\n=== Шаг 5: Визуализация результатов ===")
-    visualize_results.main()
+    print(f"Модель экспортирована в {onnx_path}")
 
 if __name__ == '__main__':
-    main()
+    prepare_data()
+    trained_policy = train_model()
+    export_model(trained_policy)
