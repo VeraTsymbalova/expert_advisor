@@ -8,3 +8,9 @@ stable-baselines3[extra]
 optuna
 matplotlib
 tensorboard
+di-engine
+pyecharts
+numba
+transformers
+pickle
+onnx
