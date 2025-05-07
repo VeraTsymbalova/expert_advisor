@@ -9,14 +9,14 @@ if not mt5.initialize():
 
 symbol = "EURUSD"
 start_date = datetime(2023, 4, 1)
-end_date = datetime.now()
+end_date = datetime(2025, 4, 30)
 
 # Получение свечей с timeframe H1
 rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_H1, start_date, end_date)
 df_candles = pd.DataFrame(rates)
 df_candles['time'] = pd.to_datetime(df_candles['time'], unit='s')
 df_candles.rename(columns={
-    'time': 'DATETIME',
+    'time': 'DATETIME)',
     'open': 'OPEN',
     'high': 'HIGH',
     'low': 'LOW',
