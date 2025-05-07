@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
