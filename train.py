@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 from ding.entry import serial_pipeline
 from ppo_forex_config import ppo_forex_config
 from ppo_forex_create_config import ppo_forex_create_config
@@ -23,18 +26,25 @@ class WrappedVAC(nn.Module):
         return output
 
 if __name__ == '__main__':
-    # 1. Загружаем и обрабатываем данные
+    # Загружаем и обрабатываем данные
     df = pd.read_csv('EURUSD-H1.csv', delimiter='\t')
     df = add_trend_indicators(df)
     df.to_csv('EURUSD-H1-with-indicators.csv', index=False, sep='\t')
     df_train, df_test, df_val = preprocess_data('EURUSD-H1-with-indicators.csv')
 
-    # 2. Сохраняем данные для среды
+    # Сохраняем данные для среды
     with open('train_data.pkl', 'wb') as f:
         pickle.dump(df_train, f)
 
-    # 3. Запускаем пайплайн и сохраняем обученную модель
+    # Запускаем пайплайн и сохраняем обученную модель
     trained_policy = serial_pipeline(
         [ppo_forex_config, ppo_forex_create_config],
         seed=0,
     )
+
+    from torch.utils.tensorboard import SummaryWriter
+    writer = SummaryWriter(log_dir="./log/custom_metrics")
+
+    writer.add_text("Status", "Training complete")
+    writer.add_scalar("Training/StopValue", ppo_forex_config.env.stop_value, 0)
+    writer.close()
