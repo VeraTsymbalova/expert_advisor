@@ -41,6 +41,8 @@ class ForexTradingEnv(gym.Env):
             low=-np.inf, high=np.inf, shape=(self.data.shape[1],), dtype=np.float32
         ) # Все признаки наблюдения в одном векторе
 
+        # Установка пространства наблюдений вручную
+        self._observation_space = self.observation_space
 
     def reset(self, seed=None, options=None):
         if seed is not None:
@@ -53,7 +55,9 @@ class ForexTradingEnv(gym.Env):
         return self._next_observation() # Возвращаем начальное наблюдение
 
     def _next_observation(self):
-        obs = self.data.drop(columns=['DATE']).iloc[self.current_step].values # Убираем столбец DATE и берём текущую строку
+        columns_to_exclude = ['Unscaled', 'DATE', 'DATETIME']
+        filtered_columns = [col for col in self.data.columns if not any(excl in col for excl in columns_to_exclude)]
+        obs = self.data[filtered_columns].iloc[self.current_step].values # Убираем столбецы Unscaled, DATE, DATETIME и берём текущую строку
         return obs.astype(np.float32) # Приводим к float32 для совместимости с моделью
 
     def step(self, action):
@@ -103,10 +107,11 @@ class ForexTradingEnv(gym.Env):
 
         self.net_worth = self.balance + unrealized_pnl
 
-        if self.current_step % 100 == 0:
-            print(f"[STEP {self.current_step}] Action counts: {self.action_counts}")
-            profit = self.net_worth - self.initial_balance
-            print(f'Step: {self.current_step}, Balance: {self.balance:.2f}, Net Worth: {self.net_worth:.2f}, Profit: {profit:.2f}, Unrealized PnL: {unrealized_pnl:.2f}')
+        if self.current_step % 1000 == 0:
+            total_actions = sum(self.action_counts.values())
+            action_ratio = {k: f"{(v / total_actions) * 100:.1f}%" for k, v in self.action_counts.items()}
+            print(f"[STEP {self.current_step}] Profit: {self.net_worth - self.initial_balance:.2f}, "
+                f"Action Ratio: {action_ratio}")
 
     # Проверка Take Profit / Stop Loss
         if self.position != 0:
@@ -165,12 +170,15 @@ class ForexTradingEnv(gym.Env):
             if self.position == 0:
                 reward += 0.1  # За открытие позиции
             else:
-                reward += 0.02  # За активность
+                reward += 0.01  # За активность
 
         return obs, reward, terminated, truncated, {} # Возврат следующего состояния и награды
 
     def render(self, mode='human'):
         profit = self.net_worth - self.initial_balance
+
+    def close(self): # Закрытие среды
+        pass
 
     def close(self): # Закрытие среды
         pass
