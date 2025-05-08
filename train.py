@@ -45,6 +45,10 @@ if __name__ == '__main__':
     from torch.utils.tensorboard import SummaryWriter
     writer = SummaryWriter(log_dir="./log/custom_metrics")
 
-    writer.add_text("Status", "Training complete")
-    writer.add_scalar("Training/StopValue", ppo_forex_config.env.stop_value, 0)
-    writer.close()
+    writer.add_scalar("Metrics/AverageReward", avg_reward, iteration)
+    writer.add_scalar("Metrics/MovingAvgReturn", moving_avg_return, iteration)
+    writer.add_scalar("Loss/Value", value_loss, iteration)
+    writer.add_scalar("Loss/Entropy", entropy_loss, iteration)
+    writer.add_scalar("Policy/Entropy", policy_entropy, iteration)
+    writer.add_scalar("Env/EpisodeLength", episode_length, iteration)
+    writer.add_scalar("Policy/ExploitVsExplore", exploit_vs_explore_ratio, iteration)
