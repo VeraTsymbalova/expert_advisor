@@ -10,7 +10,7 @@ import pickle
 
 # Класс среды для торговли на рынке Forex
 class ForexTradingEnv(gym.Env):
-    def __init__(self, data=None, initial_balance=10000, leverage=100, tp=0.002, sl=0.004, account_type='cent'):
+    def __init__(self, data=None, initial_balance=100, leverage=100, tp=0.002, sl=0.004, account_type='dollar'):
         super(ForexTradingEnv, self).__init__() # Инициализация базового класса среды
 
         # Загрузка данных
@@ -91,10 +91,22 @@ class ForexTradingEnv(gym.Env):
                 self.balance += reward
                 self.position = 0
 
+        # Пересчёт net_worth с учётом плавающей прибыли
+        unrealized_pnl = 0
+        if self.position != 0:
+            if self.position == 1:  # Long
+                current_bid = current_price - (spread / 2)
+                unrealized_pnl = (current_bid - self.entry_price) * self.leverage * 10000
+            elif self.position == -1:  # Short
+                current_ask = current_price + (spread / 2)
+                unrealized_pnl = (self.entry_price - current_ask) * self.leverage * 10000
+
+        self.net_worth = self.balance + unrealized_pnl
+
         if self.current_step % 100 == 0:
             print(f"[STEP {self.current_step}] Action counts: {self.action_counts}")
             profit = self.net_worth - self.initial_balance
-            print(f'Step: {self.current_step}, Balance: {self.balance:.2f}, Net Worth: {self.net_worth:.2f}, Profit: {profit:.2f}')
+            print(f'Step: {self.current_step}, Balance: {self.balance:.2f}, Net Worth: {self.net_worth:.2f}, Profit: {profit:.2f}, Unrealized PnL: {unrealized_pnl:.2f}')
 
     # Проверка Take Profit / Stop Loss
         if self.position != 0:
@@ -116,8 +128,18 @@ class ForexTradingEnv(gym.Env):
                 self.balance += reward
                 self.position = 0
 
-        self.net_worth = self.balance # Обновление стоимости счета
+        # Рассчитываем текущую плавающую прибыль/убыток
+        unrealized_pnl = 0
+        if self.position != 0:
+            if self.position == 1:  # Long
+                current_bid = current_price - (spread / 2)
+                unrealized_pnl = (current_bid - self.entry_price) * self.leverage * 10000
+            elif self.position == -1:  # Short
+                current_ask = current_price + (spread / 2)
+                unrealized_pnl = (self.entry_price - current_ask) * self.leverage * 10000
 
+        self.net_worth = self.balance + unrealized_pnl # Обновление стоимости счета
+        
         self.current_step += 1 # Переход к следующему шагу
         if self.current_step >= len(self.data) - 1:
             terminated = True # Завершение эпизода
@@ -152,3 +174,4 @@ class ForexTradingEnv(gym.Env):
 
     def close(self): # Закрытие среды
         pass
+
