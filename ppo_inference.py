@@ -4,7 +4,7 @@ import numpy as np
 import onnxruntime as ort
 import errno
 
-# 🔧 Укажи путь к папке Files агента тестера стратегий
+# Укажи путь к папке Files агента тестера стратегий
 base_path = r"C:\Users\vera-\AppData\Roaming\MetaQuotes\Tester\5FFA568149E88FCD5B44D926DCFEAA79\Agent-127.0.0.1-3000\MQL5\Files"
 input_file = os.path.join(base_path, "ppo_input.txt")
 output_file = os.path.join(base_path, "ppo_action.txt")
@@ -16,7 +16,7 @@ expected_feature_count = 13  # Укажи точное число признак
 # Загрузка ONNX-модели
 try:
     session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
-    print("✅ PPO inference script started.")
+    print("PPO inference script started.")
 except Exception as e:
     with open(error_log, "a") as f:
         f.write(f"Ошибка загрузки модели: {str(e)}\n")
@@ -34,7 +34,7 @@ while True:
             if not line:
                 raise ValueError("Файл пустой.")
 
-            print(f"📥 Прочитан файл: {line}")
+            print(f"Прочитан файл: {line}")
             features = np.array([float(x) for x in line.split()], dtype=np.float32).reshape(1, -1)
 
             if features.shape[1] != expected_feature_count:
@@ -59,11 +59,11 @@ while True:
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✔ Action: {action}\n")
 
-            print(f"✔ Признаки обработаны. Action: {action}")
+            print(f"Признаки обработаны. Action: {action}")
 
         except IOError as e:
             if e.errno == errno.EACCES:
-                print("⌛ Файл занят другим процессом. Повтор через 0.5 сек.")
+                print("Файл занят другим процессом. Повтор через 0.5 сек.")
             else:
                 with open(error_log, "a", encoding="utf-8") as f:
                     f.write(f"IOError: {str(e)}\n")
@@ -72,6 +72,6 @@ while True:
                 f.write(f"Ошибка: {str(e)}\n")
             print("⚠ Ошибка при обработке входа:", e)
     else:
-        print("⌛ Ожидание появления ppo_input.txt...")
+        print("Ожидание появления ppo_input.txt...")
 
     time.sleep(0.5)
