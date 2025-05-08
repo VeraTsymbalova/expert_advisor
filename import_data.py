@@ -1,73 +1,84 @@
 import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, timedelta
+import logging
 
-# Инициализация подключения к Metatrader5
-if not mt5.initialize():
-    print("Ошибка инициализации MT5:", mt5.last_error())
-    quit()
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-symbol = "EURUSD"
-start_date = datetime(2023, 4, 1)
-end_date = datetime(2025, 4, 30)
+# Инициализация MT5
 
-# Получение свечей с timeframe H1
-rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_H1, start_date, end_date)
-df_candles = pd.DataFrame(rates)
-df_candles['time'] = pd.to_datetime(df_candles['time'], unit='s')
-df_candles.rename(columns={
-    'time': 'DATETIME)',
-    'open': 'OPEN',
-    'high': 'HIGH',
-    'low': 'LOW',
-    'close': 'CLOSE',
-    'tick_volume': 'TICKVOL'
-}, inplace=True)
+def initialize_mt5():
+    if not mt5.initialize():
+        logging.error(f"Ошибка инициализации MT5: {mt5.last_error()}")
+        raise SystemExit(1)
+    logging.info("MetaTrader5 успешно инициализирован")
 
-# Загрузка тиков по дням и расчет спреда
-all_spreads = []
-curr_date = start_date
-while curr_date < end_date:
-    next_date = curr_date + timedelta(days=1)
-    ticks = mt5.copy_ticks_range(symbol, curr_date, next_date, mt5.COPY_TICKS_ALL)
-    if ticks is not None and len(ticks) > 0:
-        df_ticks = pd.DataFrame(ticks)
-        df_ticks['time'] = pd.to_datetime(df_ticks['time'], unit='s')
-        df_ticks['spread'] = (df_ticks['ask'] - df_ticks['bid']) * 10000  # в пунктах
-        hourly_spread = df_ticks.resample('1h', on='time')['spread'].mean().reset_index()
-        hourly_spread.rename(columns={'time': 'DATETIME', 'spread': 'SPREAD'}, inplace=True)
-        all_spreads.append(hourly_spread)
-    curr_date = next_date
+# Завершение сессии MT5
 
-# Объединение спредов в dataframe
-if all_spreads:
-    df_spread = pd.concat(all_spreads, ignore_index=True)
-else:
-    df_spread = pd.DataFrame(columns=['DATETIME', 'SPREAD'])
+def shutdown_mt5():
+    mt5.shutdown()
+    logging.info("MetaTrader5 отключен")
 
-# Объединение свечей с расчетным спредом
-df_final = pd.merge(df_candles, df_spread, on='DATETIME', how='left')
+# Получение часовых свечей (H1)
 
-# Разбивка DATETIME на DATE и TIME
-df_final['DATE'] = df_final['DATETIME'].dt.strftime('%Y.%m.%d')
-df_final['TIME'] = df_final['DATETIME'].dt.strftime('%H:%M:%S')
+def get_candles(symbol, timeframe, start_date, end_date):
+    rates = mt5.copy_rates_range(symbol, timeframe, start_date, end_date)
+    if rates is None or len(rates) == 0:
+        logging.error("Не удалось загрузить свечные данные или они пусты.")
+        return pd.DataFrame()  # Возвращаем пустой DataFrame
 
-# Итоговая структура
-df_final = df_final[['DATE', 'TIME', 'OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']]
+    df = pd.DataFrame(rates)
+    if 'time' not in df.columns:
+        logging.error("Нет столбца 'time' в полученных данных.")
+        return pd.DataFrame()
 
-# Сохранение в CSV-файл
-df_final.to_csv("EURUSD-H1.csv", index=False, sep='\t')
-print("Файл сохранён как EURUSD-H1.csv")
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+    df.rename(columns={
+        'time': 'DATETIME',
+        'open': 'OPEN',
+        'high': 'HIGH',
+        'low': 'LOW',
+        'close': 'CLOSE',
+        'tick_volume': 'TICKVOL'
+    }, inplace=True)
+    return df
 
-# Проверка на пропущенные значения
-missing_info = df_final[['OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']].isna().sum()
-total_missing = missing_info.sum()
+# Расчёт почасового спреда на основе тиковых данных
 
-if total_missing > 0:
-    print("Обнаружены пропущенные значения:")
-    for column, missing_count in missing_info.items():
-        if missing_count > 0:
-            print(f"- {column}: {missing_count} пропущенных из {len(df_final)}")
+def calculate_spreads(symbol, start_date, end_date):
+    all_spreads = []
+    curr_date = start_date
+    while curr_date < end_date:
+        next_date = curr_date + timedelta(days=1)
+        ticks = mt5.copy_ticks_range(symbol, curr_date, next_date, mt5.COPY_TICKS_ALL)
+        if ticks is not None and len(ticks) > 0:
+            df_ticks = pd.DataFrame(ticks)
+            df_ticks['time'] = pd.to_datetime(df_ticks['time'], unit='s')
+            df_ticks['spread'] = (df_ticks['ask'] - df_ticks['bid']) * 10000
+            hourly_spread = df_ticks.resample('1h', on='time')['spread'].mean().reset_index()
+            hourly_spread.rename(columns={'time': 'DATETIME', 'spread': 'SPREAD'}, inplace=True)
+            all_spreads.append(hourly_spread)
+        curr_date = next_date
 
-# Отключение от терминала Metatrader5
-mt5.shutdown()
+    return pd.concat(all_spreads, ignore_index=True) if all_spreads else pd.DataFrame(columns=['DATETIME', 'SPREAD'])
+
+# Объединение свечей и спредов, заполнение пропусков
+
+def merge_and_clean_data(df_candles, df_spread):
+    df = pd.merge(df_candles, df_spread, on='DATETIME', how='left')
+    df['DATE'] = df['DATETIME'].dt.strftime('%Y.%m.%d')
+    df['TIME'] = df['DATETIME'].dt.strftime('%H:%M:%S')
+
+    missing_info = df[['OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']].isna().sum()
+    total_missing = missing_info.sum()
+    if total_missing > 0:
+        logging.warning("Обнаружены пропущенные значения:")
+        for col, cnt in missing_info.items():
+            if cnt > 0:
+                logging.warning(f"- {col}: {cnt} пропущенных из {len(df)}")
+        df[['OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']] = df[['OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']].fillna(
+            df[['OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']].mean())
+        logging.info("Пропущенные значения были заполнены средними значениями.")
+
+    return df[['DATETIME', 'DATE', 'TIME', 'OPEN', 'HIGH', 'LOW', 'CLOSE', 'TICKVOL', 'SPREAD']]
