@@ -4,7 +4,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 from ding.entry import serial_pipeline
 from ppo_forex_config import ppo_forex_config
 from ppo_forex_create_config import ppo_forex_create_config
-import register_env  # здесь ты регистрируешь ForexTradingEnv
+#import register_env
 import pandas as pd
 from add_trend_indicators import add_trend_indicators
 from preprocess_data import preprocess_data
@@ -44,11 +44,3 @@ if __name__ == '__main__':
 
     from torch.utils.tensorboard import SummaryWriter
     writer = SummaryWriter(log_dir="./log/custom_metrics")
-
-    writer.add_scalar("Metrics/AverageReward", avg_reward, iteration)
-    writer.add_scalar("Metrics/MovingAvgReturn", moving_avg_return, iteration)
-    writer.add_scalar("Loss/Value", value_loss, iteration)
-    writer.add_scalar("Loss/Entropy", entropy_loss, iteration)
-    writer.add_scalar("Policy/Entropy", policy_entropy, iteration)
-    writer.add_scalar("Env/EpisodeLength", episode_length, iteration)
-    writer.add_scalar("Policy/ExploitVsExplore", exploit_vs_explore_ratio, iteration)
