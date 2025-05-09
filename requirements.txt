@@ -11,5 +11,4 @@ di-engine
 pyecharts
 numba
 transformers
-pickle
 onnx
