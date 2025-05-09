@@ -1,0 +1,187 @@
+[2025-05-09 22:27:17][base_learner.py:360][INFO] [RANK0]: DI-engine DRL Policy
+VAC(
+  (encoder): FCEncoder(
+    (act): ReLU()
+    (init): Linear(in_features=18, out_features=128, bias=True)
+    (main): Sequential(
+      (0): Linear(in_features=128, out_features=128, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=128, out_features=64, bias=True)
+      (3): ReLU()
+    )
+  )
+  (critic_head): RegressionHead(
+    (main): Sequential(
+      (0): Linear(in_features=64, out_features=64, bias=True)
+      (1): ReLU()
+    )
+    (last): Linear(in_features=64, out_features=1, bias=True)
+  )
+  (actor_head): DiscreteHead(
+    (Q): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=64, out_features=64, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=64, out_features=3, bias=True)
+      )
+    )
+  )
+  (actor): ModuleList(
+    (0): FCEncoder(
+      (act): ReLU()
+      (init): Linear(in_features=18, out_features=128, bias=True)
+      (main): Sequential(
+        (0): Linear(in_features=128, out_features=128, bias=True)
+        (1): ReLU()
+        (2): Linear(in_features=128, out_features=64, bias=True)
+        (3): ReLU()
+      )
+    )
+    (1): DiscreteHead(
+      (Q): Sequential(
+        (0): Sequential(
+          (0): Linear(in_features=64, out_features=64, bias=True)
+          (1): ReLU()
+        )
+        (1): Sequential(
+          (0): Linear(in_features=64, out_features=3, bias=True)
+        )
+      )
+    )
+  )
+  (critic): ModuleList(
+    (0): FCEncoder(
+      (act): ReLU()
+      (init): Linear(in_features=18, out_features=128, bias=True)
+      (main): Sequential(
+        (0): Linear(in_features=128, out_features=128, bias=True)
+        (1): ReLU()
+        (2): Linear(in_features=128, out_features=64, bias=True)
+        (3): ReLU()
+      )
+    )
+    (1): RegressionHead(
+      (main): Sequential(
+        (0): Linear(in_features=64, out_features=64, bias=True)
+        (1): ReLU()
+      )
+      (last): Linear(in_features=64, out_features=1, bias=True)
+    )
+  )
+)
+[2025-05-09 22:30:11][base_learner.py:360][INFO] [RANK0]: learner save ckpt in ./ppo_forex_trading/ckpt\ckpt_best.pth.tar
+[2025-05-09 22:30:11][base_learner.py:360][INFO] [RANK0]: === Training Iteration 0 Result ===
+[2025-05-09 22:30:11][learner_hook.py:228][INFO] 
++-------+------------+------------------+-----------------+------------------+
+| Name  | cur_lr_avg | total_loss_avg   | policy_loss_avg | value_loss_avg   |
++-------+------------+------------------+-----------------+------------------+
+| Value | 0.000300   | 422662848.000000 | 0.000000        | 845325696.000000 |
++-------+------------+------------------+-----------------+------------------+
++-------+------------------+-------------+--------------+---------------+
+| Name  | entropy_loss_avg | adv_max_avg | adv_mean_avg | approx_kl_avg |
++-------+------------------+-------------+--------------+---------------+
+| Value | 1.098524         | 3.034534    | -0.000000    | -0.000000     |
++-------+------------------+-------------+--------------+---------------+
++-------+--------------+---------------+----------------+
+| Name  | clipfrac_avg | value_max_avg | value_mean_avg |
++-------+--------------+---------------+----------------+
+| Value | 0.000000     | 0.043966      | 0.028253       |
++-------+--------------+---------------+----------------+
+
+[2025-05-09 22:30:11][base_learner.py:360][INFO] [RANK0]: learner save ckpt in ./ppo_forex_trading/ckpt\iteration_0.pth.tar
+[2025-05-09 22:30:14][base_learner.py:360][INFO] [RANK0]: === Training Iteration 100 Result ===
+[2025-05-09 22:30:14][learner_hook.py:228][INFO] 
++-------+------------+----------------+-----------------+----------------+
+| Name  | cur_lr_avg | total_loss_avg | policy_loss_avg | value_loss_avg |
++-------+------------+----------------+-----------------+----------------+
+| Value | 0.000300   | 0.106804       | 0.009764        | 0.301713       |
++-------+------------+----------------+-----------------+----------------+
++-------+------------------+-------------+--------------+---------------+
+| Name  | entropy_loss_avg | adv_max_avg | adv_mean_avg | approx_kl_avg |
++-------+------------------+-------------+--------------+---------------+
+| Value | 1.076321         | 2.001738    | 0.000000     | 0.040501      |
++-------+------------------+-------------+--------------+---------------+
++-------+--------------+---------------+----------------+
+| Name  | clipfrac_avg | value_max_avg | value_mean_avg |
++-------+--------------+---------------+----------------+
+| Value | 0.369318     | -0.236920     | -0.334403      |
++-------+--------------+---------------+----------------+
+
+[2025-05-09 22:33:02][base_learner.py:360][INFO] [RANK0]: learner save ckpt in ./ppo_forex_trading/ckpt\ckpt_best.pth.tar
+[2025-05-09 22:33:05][base_learner.py:360][INFO] [RANK0]: === Training Iteration 200 Result ===
+[2025-05-09 22:33:05][learner_hook.py:228][INFO] 
++-------+------------+----------------+-----------------+----------------+
+| Name  | cur_lr_avg | total_loss_avg | policy_loss_avg | value_loss_avg |
++-------+------------+----------------+-----------------+----------------+
+| Value | 0.000300   | 0.106711       | 0.002934        | 0.314448       |
++-------+------------+----------------+-----------------+----------------+
++-------+------------------+-------------+--------------+---------------+
+| Name  | entropy_loss_avg | adv_max_avg | adv_mean_avg | approx_kl_avg |
++-------+------------------+-------------+--------------+---------------+
+| Value | 1.068941         | 2.304214    | 0.000000     | 0.028282      |
++-------+------------------+-------------+--------------+---------------+
++-------+--------------+---------------+----------------+
+| Name  | clipfrac_avg | value_max_avg | value_mean_avg |
++-------+--------------+---------------+----------------+
+| Value | 0.227273     | 0.334126      | 0.200528       |
++-------+--------------+---------------+----------------+
+
+[2025-05-09 22:35:42][base_learner.py:360][INFO] [RANK0]: learner save ckpt in ./ppo_forex_trading/ckpt\ckpt_best.pth.tar
+[2025-05-09 22:35:44][base_learner.py:360][INFO] [RANK0]: === Training Iteration 300 Result ===
+[2025-05-09 22:35:44][learner_hook.py:228][INFO] 
++-------+------------+----------------+-----------------+----------------+
+| Name  | cur_lr_avg | total_loss_avg | policy_loss_avg | value_loss_avg |
++-------+------------+----------------+-----------------+----------------+
+| Value | 0.000300   | 0.057866       | 0.015256        | 0.194392       |
++-------+------------+----------------+-----------------+----------------+
++-------+------------------+-------------+--------------+---------------+
+| Name  | entropy_loss_avg | adv_max_avg | adv_mean_avg | approx_kl_avg |
++-------+------------------+-------------+--------------+---------------+
+| Value | 1.091730         | 2.457466    | -0.000000    | 0.012081      |
++-------+------------------+-------------+--------------+---------------+
++-------+--------------+---------------+----------------+
+| Name  | clipfrac_avg | value_max_avg | value_mean_avg |
++-------+--------------+---------------+----------------+
+| Value | 0.365057     | 0.874373      | 0.568282       |
++-------+--------------+---------------+----------------+
+
+[2025-05-09 22:38:33][base_learner.py:360][INFO] [RANK0]: === Training Iteration 400 Result ===
+[2025-05-09 22:38:33][learner_hook.py:228][INFO] 
++-------+------------+----------------+-----------------+----------------+
+| Name  | cur_lr_avg | total_loss_avg | policy_loss_avg | value_loss_avg |
++-------+------------+----------------+-----------------+----------------+
+| Value | 0.000300   | 0.265892       | 0.008222        | 0.622639       |
++-------+------------+----------------+-----------------+----------------+
++-------+------------------+-------------+--------------+---------------+
+| Name  | entropy_loss_avg | adv_max_avg | adv_mean_avg | approx_kl_avg |
++-------+------------------+-------------+--------------+---------------+
+| Value | 1.072977         | 1.764032    | 0.000000     | 0.011476      |
++-------+------------------+-------------+--------------+---------------+
++-------+--------------+---------------+----------------+
+| Name  | clipfrac_avg | value_max_avg | value_mean_avg |
++-------+--------------+---------------+----------------+
+| Value | 0.221591     | 1.708000      | 1.175572       |
++-------+--------------+---------------+----------------+
+
+[2025-05-09 22:38:36][base_learner.py:360][INFO] [RANK0]: === Training Iteration 500 Result ===
+[2025-05-09 22:38:36][learner_hook.py:228][INFO] 
++-------+------------+----------------+-----------------+----------------+
+| Name  | cur_lr_avg | total_loss_avg | policy_loss_avg | value_loss_avg |
++-------+------------+----------------+-----------------+----------------+
+| Value | 0.000300   | 0.644804       | 0.004382        | 1.390573       |
++-------+------------+----------------+-----------------+----------------+
++-------+------------------+-------------+--------------+---------------+
+| Name  | entropy_loss_avg | adv_max_avg | adv_mean_avg | approx_kl_avg |
++-------+------------------+-------------+--------------+---------------+
+| Value | 1.097286         | 1.838571    | -0.000000    | 0.017529      |
++-------+------------------+-------------+--------------+---------------+
++-------+--------------+---------------+----------------+
+| Name  | clipfrac_avg | value_max_avg | value_mean_avg |
++-------+--------------+---------------+----------------+
+| Value | 0.167614     | 4.030359      | 2.623850       |
++-------+--------------+---------------+----------------+
+
+[2025-05-09 22:41:10][base_learner.py:360][INFO] [RANK0]: learner save ckpt in ./ppo_forex_trading/ckpt\ckpt_best.pth.tar
+[2025-05-09 22:41:10][base_learner.py:360][INFO] [RANK0]: learner save ckpt in ./ppo_forex_trading/ckpt\iteration_512.pth.tar
