@@ -211,8 +211,8 @@ def evaluate_model(policy, data, label="Validation"):
     writer.add_scalar(f"{label}/ExploitVsExplore", exploit_vs_explore, step)
 
     print(f"\n[{label}] Total reward: {total_reward:.2f}, Steps: {step}, Unique states: {len(unique_states)}")
-    print(f"[{label}] Action distribution: {actions}")
-    print(f"[{label}] Exploit vs Explore Ratio: {exploit_vs_explore:.4f}")
+    print(f"[{label}] Action distribution: {actions}") 
+    print(f"[{label}] Exploit vs Explore Ratio: {exploit_vs_explore:2f}")
 
     writer.close()
 
@@ -232,21 +232,5 @@ if __name__ == '__main__':
     from torch.utils.tensorboard import SummaryWriter
     writer = SummaryWriter(log_dir="./log/custom_metrics")
 
-    writer.add_scalar("Metrics/MovingAvgReturn", moving_avg_return, iteration)
-    writer.add_scalar("Loss/Value", value_loss, iteration)
-    writer.add_scalar("Loss/Entropy", entropy_loss, iteration)
-    writer.add_scalar("Policy/Entropy", policy_entropy, iteration)
-    writer.add_scalar("Env/EpisodeLength", episode_length, iteration)
-    writer.add_scalar("Policy/ExploitVsExplore", exploit_vs_explore_ratio, iteration)
-    writer.add_scalar("Training/ExploitVsExplore", exploit_vs_explore_ratio, iteration)
-
     evaluate_model(trained_policy, df_test, label="Test") # Оценка на тесте
     writer = SummaryWriter(log_dir="./log/custom_metrics")
-
-    writer.add_scalar("Metrics/MovingAvgReturn", moving_avg_return, iteration)
-    writer.add_scalar("Loss/Value", value_loss, iteration)
-    writer.add_scalar("Loss/Entropy", entropy_loss, iteration)
-    writer.add_scalar("Policy/Entropy", policy_entropy, iteration)
-    writer.add_scalar("Env/EpisodeLength", episode_length, iteration)
-    writer.add_scalar("Policy/ExploitVsExplore", exploit_vs_explore_ratio, iteration)
-    writer.add_scalar("Training/ExploitVsExplore", exploit_vs_explore_ratio, iteration)
